@@ -1,4 +1,4 @@
-package com.example.formApp.ui.theme
+package com.example.formapp.ui.theme
 
 import android.app.Activity
 import android.os.Build

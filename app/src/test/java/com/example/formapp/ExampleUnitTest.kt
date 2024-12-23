@@ -1,4 +1,4 @@
-package com.example.formApp
+package com.example.formapp
 
 import org.junit.Test
 
