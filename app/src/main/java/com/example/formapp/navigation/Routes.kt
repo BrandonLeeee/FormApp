@@ -11,8 +11,9 @@ sealed class Routes(
     val titlePage: String,
     val icon: ImageVector?
 ) {
+    object LoginPage : Routes("loginPage", "Login Page", null)
     object FormPage : Routes("formPage", "Form Page", Icons.Default.Home)
     object FormEntries : Routes("formEntries", "Form Entries", Icons.Default.List)
     object FormDetails : Routes("formDetails", "Form Details", null)
-    object SplashScreen : Routes("splashScreen", "Splash Screem", null)
+    object SplashScreen : Routes("splashScreen", "Splash Screen", null)
 }

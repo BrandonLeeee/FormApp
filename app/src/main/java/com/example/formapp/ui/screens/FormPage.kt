@@ -8,7 +8,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,6 +27,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,14 +46,16 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
 import java.time.Instant
 import java.util.Date
-import java.util.Locale
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun FormPage(modifier: Modifier = Modifier, repository: FormViewModel) {
+fun FormPage(modifier: Modifier = Modifier, viewModel: FormViewModel, entryId: String?) {
+
+    val context = LocalContext.current
+    val uniqueId = viewModel.database.push().key
+    val users = listOf("User 1", "User 2", "User 3")
 
     var inputOrderNumber by remember { mutableStateOf("") }
     var inputCrateNumber by remember { mutableStateOf("") }
@@ -61,14 +64,32 @@ fun FormPage(modifier: Modifier = Modifier, repository: FormViewModel) {
     var inputWidth by remember { mutableStateOf("") }
     var inputHeight by remember { mutableStateOf("") }
     var observations by remember { mutableStateOf("") }
-    var sendFileWithoutPhoto by remember { mutableStateOf(false) }
-    var selectedFile by remember { mutableStateOf("") }
     var selectedUser by remember { mutableStateOf("") }
-    val context = LocalContext.current
-    val uniqueId = repository.database.push().key
-    val users = listOf("User 1", "User 2", "User 3") // Sample list of users
-
     var expanded by remember { mutableStateOf(false) }
+    val getEntry by viewModel.entry.collectAsState()
+    var checkEntryId by remember { mutableStateOf(entryId) }
+
+    suspend fun showToast(message: String) {
+        withContext(Dispatchers.Main) {
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    LaunchedEffect(getEntry) {
+        if (checkEntryId != null) {
+            viewModel.getDataById(entryId!!)
+            getEntry?.let {
+                inputOrderNumber = it.orderNumber
+                inputCrateNumber = it.crateNumber
+                inputWeight = it.weight
+                inputLength = it.length
+                inputWidth = it.width
+                inputHeight = it.height
+                observations = it.observations
+                selectedUser = it.user
+            }
+        }
+    }
 
     Column(
         modifier = modifier
@@ -203,7 +224,7 @@ fun FormPage(modifier: Modifier = Modifier, repository: FormViewModel) {
                 label = { Text(text = "Responsável:", color = Color(0xFF1976D2)) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { expanded = !expanded }, // Toggle the dropdown on click
+                    .clickable { expanded = !expanded },
                 readOnly = true,
                 trailingIcon = {
                     IconButton(onClick = { expanded = !expanded }) {
@@ -227,8 +248,8 @@ fun FormPage(modifier: Modifier = Modifier, repository: FormViewModel) {
                     DropdownMenuItem(
                         text = { Text(user) },
                         onClick = {
-                            selectedUser = user // Set selected user
-                            expanded = false    // Close dropdown
+                            selectedUser = user
+                            expanded = false
                         }
                     )
                 }
@@ -247,8 +268,11 @@ fun FormPage(modifier: Modifier = Modifier, repository: FormViewModel) {
                         require(inputHeight.isNotEmpty()) { "Height cannot be empty" }
                         require(selectedUser.isNotEmpty()) { "User cannot be empty" }
 
+
+                        val entryIdToUse = entryId ?: uniqueId.toString()
+
                         val entry = Entry(
-                            id = uniqueId.toString(),
+                            id = entryIdToUse,
                             orderNumber = inputOrderNumber,
                             crateNumber = inputCrateNumber,
                             weight = inputWeight,
@@ -260,11 +284,25 @@ fun FormPage(modifier: Modifier = Modifier, repository: FormViewModel) {
                             createdAt = Date.from(Instant.now()).time
                         )
 
-                        // Add the entry to Firebase, where a unique ID will be assigned
-                        repository.addData(entry, entry.orderNumber, entry.crateNumber)
+                        if (checkEntryId != null) {
+                            val success = viewModel.updateData(entryId!!, entry)
+                            checkEntryId = null
+                            showToast(
+                                if (success) "Entry updated successfully!" else "Failed to update entry."
+                            )
+                        } else {
+                            val entryExists =
+                                viewModel.doesEntryExist(inputOrderNumber, inputCrateNumber)
+                            if (entryExists) {
+                                showToast("An entry with this Order Number and Crate Number already exists.")
+                                return@launch
+                            } else {
+                                viewModel.addData(entry, entry.id)
+                                showToast("Entry submitted successfully!")
+                            }
+                        }
 
                         withContext(Dispatchers.Main) {
-                            // Clear input fields and show success message
                             inputOrderNumber = ""
                             inputCrateNumber = ""
                             inputWeight = ""
@@ -273,29 +311,12 @@ fun FormPage(modifier: Modifier = Modifier, repository: FormViewModel) {
                             inputHeight = ""
                             observations = ""
                             selectedUser = ""
-                            Toast.makeText(context, "Submetido com sucesso!", Toast.LENGTH_SHORT)
-                                .show()
                         }
 
                     } catch (e: IllegalArgumentException) {
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                context,
-                                e.message,
-                                Toast.LENGTH_SHORT
-                            )
-                                .show()
-                        }
+                        showToast(e.message ?: "Validation failed.")
                     } catch (e: Exception) {
-                        withContext(Dispatchers.Main) {
-                            Toast.makeText(
-                                context,
-                                "Erro ao submeter formulário.",
-                                Toast.LENGTH_SHORT
-                            )
-                                .show()
-                        }
-                        println("Error: ${e.message}")
+                        showToast("Error submitting form.")
                     }
                 }
             },
@@ -308,7 +329,9 @@ fun FormPage(modifier: Modifier = Modifier, repository: FormViewModel) {
                 contentColor = Color.White
             )
         ) {
-            Text("Submeter")
+            Text(if (checkEntryId != null) "Update" else "Submit")
+
         }
+
     }
 }

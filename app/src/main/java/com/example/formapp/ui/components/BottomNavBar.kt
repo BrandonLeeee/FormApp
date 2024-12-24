@@ -44,43 +44,33 @@ fun BottomNavBar(navController: NavHostController) {
         if (showBottomBar) {
             BottomNavigation(
                 modifier = Modifier
-                    .height(48.dp)
+                    .height(72.dp)
                     .background(
                         color = Color(0xFF1976D2),
-                        shape = RoundedCornerShape(
-                            topStart = 24.dp,
-                            topEnd = 24.dp
-                        ) // Rounded corners
+                        shape = RoundedCornerShape(32.dp)
                     ),
-                backgroundColor = Color.White,
-                contentColor = Color(0xFF1976D2)
+                backgroundColor = Color(0xFF1976D2),
+                contentColor = Color.White,
+                elevation = 8.dp
             ) {
                 items.forEach { screen ->
-                    val isSelected = currentRoute == screen.route
+                    val isSelected = currentRoute?.startsWith(screen.route) == true
 
                     BottomNavigationItem(
                         icon = {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                screen.icon?.let {
-                                    Icon(
-                                        it,
-                                        contentDescription = "screen.titlePage",
-                                        tint = if (isSelected) Color(0xFF1976D2) else Color.LightGray,
-                                        modifier = Modifier.size(if (isSelected) 28.dp else 24.dp)
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.padding(5.dp))
+                            Icon(
+                                imageVector = screen.icon!!,
+                                contentDescription = screen.titlePage,
+                                tint = if (isSelected) Color.White else Color.LightGray,
+                                modifier = Modifier.size(if (isSelected) 36.dp else 28.dp) // Larger icons
+                            )
                         },
                         label = {
                             Text(
                                 text = screen.titlePage,
                                 style = TextStyle(
-                                    color = if (isSelected) Color(0xFF1976D2) else Color.LightGray,
-                                    fontSize = if (isSelected) 15.sp else 12.sp,
+                                    color = if (isSelected) Color.White else Color.LightGray,
+                                    fontSize = if (isSelected) 18.sp else 14.sp, // Bold for selected, normal for unselected
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                 )
                             )
@@ -94,7 +84,8 @@ fun BottomNavBar(navController: NavHostController) {
                                 launchSingleTop = true
                                 restoreState = true
                             }
-                        }
+                        },
+                        alwaysShowLabel = true // Always show the label below the icon
                     )
                 }
             }

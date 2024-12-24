@@ -9,12 +9,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.formapp.FormViewModel
 import com.example.formapp.ui.components.BottomNavBar
-import com.example.formapp.ui.screens.FormPage
 import com.example.formapp.ui.screens.FormEntries
+import com.example.formapp.ui.screens.FormPage
 import com.example.formapp.ui.screens.SplashScreen
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -24,7 +24,6 @@ fun AppNavigation() {
 
     val navController = rememberNavController()
 
-    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
 
     Scaffold(bottomBar = { BottomNavBar(navController) }) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding)) {
@@ -36,14 +35,20 @@ fun AppNavigation() {
                         }
                     }
                 }
-                
-                composable(Routes.FormPage.route){
-                    FormPage(modifier = Modifier, viewModel)
+
+                composable(
+                    route = "${Routes.FormPage.route}?entryId={entryId}",
+                    arguments = listOf(navArgument("entryId") {
+                        nullable = true
+                    })
+                ) { backStackEntry ->
+                    val currentEntryId = backStackEntry.arguments?.getString("entryId")
+                    FormPage(modifier = Modifier, viewModel, entryId = currentEntryId)
                 }
-                composable(Routes.FormEntries.route){
-                    FormEntries(viewModel)
+                composable(Routes.FormEntries.route) {
+                    FormEntries(viewModel, navController)
                 }
-                
+
             }
         }
     }
